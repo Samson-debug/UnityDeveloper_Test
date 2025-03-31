@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
     [Header("Movement Configuration")]
     [SerializeField] float moveSpeed = 3f;
     [SerializeField] float rotationSpeed = 100f;
+    [SerializeField] float jumpForce = 10f;
     
     Rigidbody rb;
     Animator animator;
@@ -29,7 +30,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        animator = GetComponent<Animator>();
+        animator = GetComponentInChildren<Animator>();
         cam = Camera.main;
     }
 
@@ -40,6 +41,13 @@ public class PlayerController : MonoBehaviour
         UpdateAnimations();
     }
 
+    private void UpdateAnimations()
+    {
+        isRunning = move.sqrMagnitude > 0;
+        animator.SetBool(isRunningHash, isRunning);
+        animator.SetBool(isGroundedHash, isGrounded);
+    }
+    
     private void Move()
     {
         if(!isGrounded) return;
@@ -52,25 +60,35 @@ public class PlayerController : MonoBehaviour
         Vector3 targetVelocity = moveDir * moveSpeed;
 
         //Rotate player
-        if(moveDir.sqrMagnitude > 0.1f)
-            transform.rotation = Quaternion.LookRotation(moveDir);
+        if(moveDir.sqrMagnitude > 0.1f){
+            print($"moveDir: {moveDir}");
+            print($"before Rotation : {transform.rotation}");
+            //transform.rotation = Quaternion.LookRotation(moveDir);
+            rb.MoveRotation(Quaternion.LookRotation(moveDir));
+            print($"after Rotation : {transform.rotation}");
+        }
 
         //move player
-        rb.velocity = targetVelocity;
+        rb.velocity = new Vector3(targetVelocity.x, rb.velocity.y, targetVelocity.z);
     }
 
-    private void UpdateAnimations()
+    public void OnJump(InputAction.CallbackContext context)
     {
-        isRunning = move.sqrMagnitude > 0;
-        animator.SetBool(isRunningHash, isRunning);
-        animator.SetBool(isGroundedHash, isGrounded);
+        if(!context.started) return;
+        rb.AddForce(jumpForce * Vector3.up, ForceMode.Impulse);
+    }
+
+    public void ChangeGravity(InputAction.CallbackContext context)
+    {
+        
     }
 
     #region HelperMethods
 
     private void GroundCheck()
     {
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, .3f);
+        Vector3 origin = transform.position + Vector3.up * .2f;
+        isGrounded = Physics.Raycast(origin, Vector3.down, .4f);
     }
 
     #endregion
